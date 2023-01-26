@@ -174,7 +174,7 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
         drive.followTrajectory(goingtostackforward);
         Encoder_SlideRaise(1.5,1.5,0.5,0.5);
         intakeServo.setPower(1);
-        sleep(1000);
+        sleep(995);
         Encoder_SlideRaise(22.5,22.5,0.5,0.5);
         _4barServo.setPosition(0.5);
         sleep(500);
