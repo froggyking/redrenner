@@ -5,6 +5,7 @@ import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
+import com.aoe.stem.AOEColorPipeline;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -12,8 +13,13 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.util.Encoder;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+import org.openftc.easyopencv.OpenCvWebcam;
 
 @Autonomous
 public class BlueLeftStackAutoRRA extends LinearOpMode {
@@ -22,6 +28,8 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
     private CRServo intakeServo;
     private DcMotor leftSlide;
     private DcMotor rightSlide;
+    OpenCvWebcam webcam;
+    String what = "";
 
     private void Encoder_SlideRaise(double LeftslidePos, double RightslidePos, double LeftslideSpeed, double RightslideSpeed) {
         leftSlide.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
@@ -32,10 +40,32 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
         rightSlide.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         leftSlide.setPower(LeftslideSpeed);
         rightSlide.setPower(RightslideSpeed);
+
+
     }
 
     @Override
     public void runOpMode() throws InterruptedException {
+
+        int parkingSpot;
+
+        int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+        webcam = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "parkingCam"), cameraMonitorViewId);
+        AOEColorPipeline aoepipeline = new AOEColorPipeline("2022-2023", webcam,145,170,25,25);
+        webcam.setPipeline(aoepipeline);
+        webcam.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+        {
+            @Override
+            public void onOpened()
+            {
+                webcam.startStreaming(320, 240, OpenCvCameraRotation.UPRIGHT);
+            }
+
+            @Override
+            public void onError(int errorCode)
+            {
+            }
+        });
 
         Telemetry telemetry = new MultipleTelemetry(this.telemetry, FtcDashboard.getInstance().getTelemetry());
 
@@ -61,18 +91,69 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
                                 .build();
 
         Trajectory trajec4 = drive.trajectoryBuilder(trajec3.end())
-                        .strafeLeft(38.5)
+                        .strafeLeft(40)
                                 .build();
 
         Trajectory goingtostackforward = drive.trajectoryBuilder(trajec4.end())
-                        .back(30)
+                        .back(32.25)
                                 .build();
+
+        Trajectory linetolinearheadingformediumjunc = drive.trajectoryBuilder(goingtostackforward.end())
+                .lineToLinearHeading(new Pose2d(12,57,Math.toRadians(-90)))
+                .build();
+
+        Trajectory moveforwardwhenlinetolinearreachesmediumjunction = drive.trajectoryBuilder(linetolinearheadingformediumjunc.end())
+                        .forward(5)
+                                .build();
+
+        Trajectory movebackatmedium = drive.trajectoryBuilder(moveforwardwhenlinetolinearreachesmediumjunction.end())
+                .back(6)
+                .build();
+
+        Trajectory parkingLocationthree = drive.trajectoryBuilder(movebackatmedium.end())
+                        .strafeLeft(12)
+                                .build();
+
+        Trajectory parkingLocationtwo = drive.trajectoryBuilder(new Pose2d(12,57,Math.toRadians(-90)))
+                        .strafeRight(13.5)
+                                .build();
+
+        Trajectory parkingLocationone = drive.trajectoryBuilder(new Pose2d(12,57,Math.toRadians(-90)))
+                        .strafeRight(33.5)
+                                .build();
+
+
+
+
+
+
+
 
 
 
         waitForStart();
 
+        leftSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
         if (isStopRequested()) return;
+        parkingSpot = 0;
+        what = aoepipeline.ColorValue;
+
+        telemetry.addData("What", aoepipeline.ColorValue);
+        telemetry.update();
+        sleep(100);
+
+        if (what == "blue") {
+            parkingSpot = 1;
+        } else if (what == "green") {
+            parkingSpot = 2;
+        } else if (what == "red") {
+            parkingSpot = 3;
+
+        }
+
+        sleep(1000);
 
         intakeServo.setPower(1);
         _4barServo.setPosition(0.5);
@@ -84,13 +165,52 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
         sleep(500);
         intakeServo.setPower(-1);
         sleep(500);
-        _4barServo.setPosition(0.25);
+        _4barServo.setPosition(0.385);
         sleep(20);
         intakeServo.setPower(0);
         drive.followTrajectory(trajec3);
-        Encoder_SlideRaise(2.5,2.5,0.5,0.5);
+        Encoder_SlideRaise(4.5,4.5,0.5,0.5);
         drive.followTrajectory(trajec4);
         drive.followTrajectory(goingtostackforward);
+        Encoder_SlideRaise(1.5,1.5,0.5,0.5);
+        intakeServo.setPower(1);
+        sleep(1000);
+        Encoder_SlideRaise(22.5,22.5,0.5,0.5);
+        _4barServo.setPosition(0.5);
+        sleep(500);
+        drive.followTrajectory(linetolinearheadingformediumjunc);
+        drive.followTrajectory(moveforwardwhenlinetolinearreachesmediumjunction);
+        _4barServo.setPosition(0.8);
+        intakeServo.setPower(-1);
+        sleep(500);
+        drive.followTrajectory(movebackatmedium);
+        _4barServo.setPosition(0.5);
+        sleep(200);
+        intakeServo.setPower(0);
+        Encoder_SlideRaise(0,0,0.5,0.5);
+
+        if (parkingSpot == 1) {
+            drive.followTrajectory(parkingLocationone);
+
+        } else if (parkingSpot == 2) {
+
+            drive.followTrajectory(parkingLocationtwo);
+
+
+
+        } else if (parkingSpot == 3) {
+
+            drive.followTrajectory(parkingLocationthree);
+
+
+
+        }
+
+
+
+
+
+
 
 
         Pose2d poseEstimate = drive.getPoseEstimate();
@@ -102,8 +222,7 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
 
 
         while (!isStopRequested() && opModeIsActive()) ;
-        leftSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        rightSlide.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
     }
 }
 
