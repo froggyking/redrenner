@@ -153,7 +153,7 @@ public class BlueLeftStackAutoRRA extends LinearOpMode {
 
         }
 
-        sleep(1000);
+        sleep(995);
 
         intakeServo.setPower(1);
         _4barServo.setPosition(0.5);
